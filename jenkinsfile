@@ -1,0 +1,63 @@
+pipeline {
+    agent { label 'slave01' }
+
+    environment {
+        image_name = "hubdc.dso.local/gungun/python-prisma:20250602"
+        prisma_console_url = "https://asia-southeast1.cloud.twistlock.com/aws-singapore-961149791"
+        prisma_access_id = "1d7ab900-31e3-4ae6-a5aa-534ce20084cc"
+        prisma_access_secret = "+0RyfZNC2XFdQORvX0Q0i59oDH4="
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                script {
+                    checkout scm
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh "docker build -t ${env.image_name} ."
+                }
+            }
+        }
+
+
+        stage('Scan image with Prisma') {
+            steps {
+                script {
+                    def command = """
+                    twistcli images scan --address ${env.prisma_console_url} \\
+                    -u ${env.prisma_access_id} \\
+                    -p ${env.prisma_access_secret} \\
+                    --details ${env.image_name}
+                    """
+                    sh command
+                }
+            }
+        }
+
+        stage('Login to Harbor') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'harborhub', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                        sh "echo \$DOCKER_PASS | docker login hubdc.dso.local -u \$DOCKER_USER --password-stdin"
+                    }
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    sh "docker push ${env.image_name}"
+                }
+            }
+        }
+
+    }
+}
