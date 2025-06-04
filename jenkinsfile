@@ -2,8 +2,11 @@ pipeline {
     agent { label 'slave01' }
 
     environment {
-        IMAGE_NAME = "hubdc.dso.local/gungun/python-prisma:20250604"
-        CX_TOKEN   = credentials('cx_token')
+        IMAGE_NAME           = "hubdc.dso.local/gungun/python-prisma:20250604"
+        CX_TOKEN             = credentials('cx_token')
+        prisma_console_url   = "https://asia-southeast1.cloud.twistlock.com/aws-singapore-961149791"
+        prisma_access_id     = "1d7ab900-31e3-4ae6-a5aa-534ce20084cc"
+        prisma_access_secret = "+0RyfZNC2XFdQORvX0Q0i59oDH4="
     }
 
     stages {
@@ -19,21 +22,43 @@ pipeline {
             }
         }
 
+        stage('Scan image with Prisma') {
+            steps {
+                script {
+                    def command = """
+                    twistcli images scan --address ${env.prisma_console_url} \\
+                    -u ${env.prisma_access_id} \\
+                    -p ${env.prisma_access_secret} \\
+                    --details ${env.IMAGE_NAME}
+                    """
+                    sh command
+                }
+            }
+        }
+
         stage('Run Python Script in Container') {
             steps {
                 script {
-                    docker.image("${IMAGE_NAME}").inside("-v \$WORKSPACE:/app -w /app --rm") {
-                        sh '''
-                            python3 cxone_end_to_end.py \
-                              --project-name "MFEC_end_to_end_scan" \
-                              --tenant "nfr_westconth" \
-                              --token "${CX_TOKEN}" \
-                              --region "anz" \
-                              --scan-id "e3d1cb0e-440e-4f15-aace-4167b9be8232"
-                        '''
-                    }
+                    sh '''
+                        docker run --rm \
+                          -v "$WORKSPACE":/app \
+                          -w /app \
+                          ${IMAGE_NAME} \
+                          python3 cxone_end_to_end.py \
+                            --project-name "MFEC_end_to_end_scan" \
+                            --tenant "nfr_westconth" \
+                            --token "${CX_TOKEN}" \
+                            --region "anz" \
+                            --scan-id "e3d1cb0e-440e-4f15-aace-4167b9be8232"
+                    '''
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            deleteDir()
         }
     }
 }
