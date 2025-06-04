@@ -39,7 +39,7 @@ pipeline {
         stage('Run Python Script in Container') {
             steps {
                 script {
-                    docker.image("${IMAGE_NAME}").inside("-v \$WORKSPACE:/app") {
+                    docker.image("${IMAGE_NAME}").inside("-v \$WORKSPACE:/app -w /app") {
                         sh '''
                             python3 cxone_end_to_end.py \
                               --project-name "MFEC_end_to_end_scan" \
