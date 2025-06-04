@@ -5,7 +5,8 @@ RUN addgroup -g 1002 userapp && \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir --upgrade "setuptools>=78.1.1"
+RUN pip install --no-cache-dir --upgrade "setuptools>=78.1.1" \
+    && pip install --no-cache-dir requests
 
 USER userapp
 
