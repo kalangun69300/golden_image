@@ -7,12 +7,8 @@ pipeline {
         PRISMA_CONSOLE_URL   = "https://asia-southeast1.cloud.twistlock.com/aws-singapore-961149791"
         PRISMA_ACCESS_ID     = "1d7ab900-31e3-4ae6-a5aa-534ce20084cc"
         PRISMA_ACCESS_SECRET = "+0RyfZNC2XFdQORvX0Q0i59oDH4="
-
-        // SSH URL ของ GitLab repo ที่เก็บไฟล์ Python
         GITLAB_PYTHON_REPO   = "git@192.168.172.13:netsiri_r/gitlab-golden-img.git"
-        // ชื่อไฟล์ Python ที่ต้องการดึงออกมา
         PYTHON_SCRIPT        = "cxone_end_to_end.py"
-        // โฟลเดอร์ย่อยใน workspace ที่จะวางไฟล์ Python
         PYTHON_DIR           = "python-scripts"
     }
 
@@ -49,9 +45,7 @@ pipeline {
                     // โหลด SSH key จาก Jenkins Credentials
                     sshagent (credentials: ['gitlab-deploy-key']) {
                         sh """
-                          # สร้างโฟลเดอร์ .ssh แล้วเพิ่ม host key ของ GitLab
-                          mkdir -p ~/.ssh
-                          ssh-keyscan -H 192.168.172.13 >> ~/.ssh/known_hosts
+       
 
                           # สร้างโฟลเดอร์สำหรับสคริปต์ ถ้ายังไม่มี
                           mkdir -p ${PYTHON_DIR}
@@ -59,8 +53,6 @@ pipeline {
                           cd ${PYTHON_DIR}
                           git archive --remote=${GITLAB_PYTHON_REPO} HEAD ${PYTHON_SCRIPT} | tar -x
 
-                          ls -l ${PYTHON_SCRIPT}
-                          cd ..
                         """
                     }
                 }
