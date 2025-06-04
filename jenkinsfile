@@ -5,8 +5,8 @@ pipeline {
         IMAGE_NAME           = "hubdc.dso.local/gungun/python-prisma:20250604"
         CX_TOKEN             = credentials('cx_token')
         PRISMA_CONSOLE_URL   = "https://asia-southeast1.cloud.twistlock.com/aws-singapore-961149791"
-        PRISMA_ACCESS_ID     = "1d7ab900-31e3-4ae6-a5aa-534ce20084cc"
-        PRISMA_ACCESS_SECRET = "+0RyfZNC2XFdQORvX0Q0i59oDH4="
+        PRISMA_ACCESS_ID     = credentials('prisma-access-id')
+        PRISMA_ACCESS_SECRET = credentials('prisma_access_secret')
         GITLAB_PYTHON_REPO   = "git@192.168.172.13:netsiri_r/gitlab-golden-img.git"
         PYTHON_SCRIPT        = "cxone_end_to_end.py"
         PYTHON_DIR           = "python-scripts"
@@ -45,13 +45,11 @@ pipeline {
                     // โหลด SSH key จาก Jenkins Credentials
                     sshagent (credentials: ['gitlab-deploy-key']) {
                         sh """
-       
-
                           # สร้างโฟลเดอร์สำหรับสคริปต์ ถ้ายังไม่มี
                           mkdir -p ${PYTHON_DIR}
 
                           cd ${PYTHON_DIR}
-                          git archive --remote=${GITLAB_PYTHON_REPO} HEAD ${PYTHON_SCRIPT} | tar -x
+                          git archive --remote=${GITLAB_PYTHON_REPO} HEAD ${PYTHON_SCRIPT} 
 
                         """
                     }
