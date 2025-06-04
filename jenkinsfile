@@ -21,13 +21,16 @@ pipeline {
 
         stage('Fix Permissions on Workspace') {
             steps {
-                sh 'chmod -R o+rx "$WORKSPACE"'
+                // ให้ทุกคน (others) อ่าน เขียน และเข้าโฟลเดอร์ workspace ได้ (rwx)
+                // เพื่อให้ container (appuser) สามารถเขียนไฟล์ เช่น debug_finding.csv ลงไปได้
+                sh 'chmod -R o+rwx "$WORKSPACE"'
             }
         }
 
         stage('Run Python Script via docker run') {
             steps {
                 script {
+                    // ใช้ :Z เพื่อให้ SELinux relabel workspace ให้ container อ่าน/เขียนได้
                     sh '''
                         docker run --rm \
                           -v "$WORKSPACE":/app:Z \
