@@ -49,7 +49,7 @@ pipeline {
                           mkdir -p ${PYTHON_DIR}
 
                           cd ${PYTHON_DIR}
-                          git archive --remote=${GITLAB_PYTHON_REPO} HEAD ${PYTHON_SCRIPT} 
+                          git archive --remote=${GITLAB_PYTHON_REPO} HEAD ${PYTHON_SCRIPT} | tar -x
 
                         """
                     }
