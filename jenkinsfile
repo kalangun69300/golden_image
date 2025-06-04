@@ -2,23 +2,19 @@ pipeline {
     agent { label 'slave01' }
 
     environment {
-        // ชื่อ Docker image ที่สร้างจาก Dockerfile ของคุณ (มี USER appuser อยู่ในตัว)
         IMAGE_NAME = "hubdc.dso.local/gungun/python-prisma:20250604"
-        // ดึงค่า token จาก Jenkins credentials (ID = cx_token)
         CX_TOKEN   = credentials('cx_token')
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                // ดึงโค้ด (รวม Dockerfile + cxone_end_to_end.py) มาที่ workspace
                 checkout scm
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                // Build image โดย Dockerfile ใน repo จะสร้าง USER appuser ไว้อยู่แล้ว
                 sh "docker build -t ${IMAGE_NAME} ."
             }
         }
@@ -26,10 +22,7 @@ pipeline {
         stage('Run Python Script in Container') {
             steps {
                 script {
-                    // ใช้ Docker Pipeline Plugin รัน container ด้วย USER ที่กำหนดไว้ใน Dockerfile (appuser)
-                    // ใส่ :Z เพื่อให้ SELinux relabel workspace ให้ container อ่านไฟล์ได้
-                    docker.image("${IMAGE_NAME}").inside("-v \$WORKSPACE:/app:Z -w /app") {
-                        // รัน Python สคริปต์ภายใน container (USER appuser เป็นฝ่ายรัน)
+                    docker.image("${IMAGE_NAME}").inside("-u 1002:1002 -v \$WORKSPACE:/app:Z -w /app") {
                         sh '''
                             python3 cxone_end_to_end.py \
                               --project-name "MFEC_end_to_end_scan" \
@@ -41,13 +34,6 @@ pipeline {
                     }
                 }
             }
-        }
-    }
-
-    post {
-        always {
-            // ลบไฟล์ใน workspace ทิ้งหลังจบ pipeline
-            deleteDir()
         }
     }
 }
