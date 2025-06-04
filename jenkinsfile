@@ -2,15 +2,22 @@ pipeline {
     agent { label 'slave01' }
 
     environment {
-        IMAGE_NAME = "hubdc.dso.local/gungun/python-prisma:20250604"
-        CX_TOKEN   = credentials('cx_token')
-        prisma_console_url = "https://asia-southeast1.cloud.twistlock.com/aws-singapore-961149791"
-        prisma_access_id = "1d7ab900-31e3-4ae6-a5aa-534ce20084cc"
-        prisma_access_secret = "+0RyfZNC2XFdQORvX0Q0i59oDH4="
+        IMAGE_NAME           = "hubdc.dso.local/gungun/python-prisma:20250604"
+        CX_TOKEN             = credentials('cx_token')
+        PRISMA_CONSOLE_URL   = "https://asia-southeast1.cloud.twistlock.com/aws-singapore-961149791"
+        PRISMA_ACCESS_ID     = "1d7ab900-31e3-4ae6-a5aa-534ce20084cc"
+        PRISMA_ACCESS_SECRET = "+0RyfZNC2XFdQORvX0Q0i59oDH4="
+
+        // SSH URL ของ GitLab repo ที่เก็บไฟล์ Python
+        GITLAB_PYTHON_REPO   = "git@192.168.172.13:netsiri_r/gitlab-golden-img.git"
+        // ชื่อไฟล์ Python ที่ต้องการดึงออกมา
+        PYTHON_SCRIPT        = "cxone_end_to_end.py"
+        // โฟลเดอร์ย่อยใน workspace ที่จะวางไฟล์ Python
+        PYTHON_DIR           = "python-scripts"
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Checkout GitHub Code') {
             steps {
                 checkout scm
             }
@@ -18,11 +25,11 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${IMAGE_NAME} ."
+                sh "docker build -t ${env.IMAGE_NAME} ."
             }
         }
 
-        stage('Scan image with Prisma') {
+         stage('Scan image with Prisma') {
             steps {
                 script {
                     def command = """
@@ -36,21 +43,54 @@ pipeline {
             }
         }
 
-        stage('Run Python Script in Container') {
+        stage('Fetch Python Script via git archive') {
             steps {
                 script {
-                    docker.image("${IMAGE_NAME}").inside("-v \$WORKSPACE:/app -w /app") {
-                        sh '''
-                            python3 cxone_end_to_end.py \
-                              --project-name "MFEC_end_to_end_scan" \
-                              --tenant "nfr_westconth" \
-                              --token "${CX_TOKEN}" \
-                              --region "anz" \
-                              --scan-id "e3d1cb0e-440e-4f15-aace-4167b9be8232"
-                        '''
+                    // โหลด SSH key จาก Jenkins Credentials
+                    sshagent (credentials: ['gitlab-deploy-key']) {
+                        sh """
+                          mkdir -p ${PYTHON_DIR}
+
+                          cd ${PYTHON_DIR}
+                          git archive --remote=${GITLAB_PYTHON_REPO} HEAD ${PYTHON_SCRIPT} | tar -x
+
+                          ls -l ${PYTHON_SCRIPT}
+                          cd ..
+                        """
                     }
                 }
             }
+        }
+
+        stage('Fix Permissions on Workspace') {
+            steps {
+                sh 'chmod -R o+rwx "$WORKSPACE"'
+            }
+        }
+
+        stage('Run Python Script via docker run') {
+            steps {
+                script {
+                    sh '''
+                        docker run --rm \
+                          -v "$WORKSPACE":/app:Z \
+                          -w /app \
+                          ${IMAGE_NAME} \
+                          python3 cxone_end_to_end.py \
+                            --project-name "MFEC_end_to_end_scan" \
+                            --tenant "nfr_westconth" \
+                            --token "$CX_TOKEN" \
+                            --region "anz" \
+                            --scan-id "e3d1cb0e-440e-4f15-aace-4167b9be8232"
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            deleteDir()
         }
     }
 }
