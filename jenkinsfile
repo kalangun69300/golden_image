@@ -42,7 +42,8 @@ pipeline {
         stage('Fetch Python Script via git archive') {
             steps {
                 script {
-
+                    // โหลด SSH key จาก Jenkins Credentials
+                    sshagent (credentials: ['gitlab-deploy-key']) {
                         sh """
                           # สร้างโฟลเดอร์สำหรับสคริปต์ ถ้ายังไม่มี
                           mkdir -p ${PYTHON_DIR}
@@ -51,7 +52,7 @@ pipeline {
                           git archive --remote=${GITLAB_PYTHON_REPO} HEAD ${PYTHON_SCRIPT} | tar -x
 
                         """
-
+                    }
                 }
             }
         }
