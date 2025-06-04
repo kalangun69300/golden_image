@@ -5,14 +5,7 @@ RUN addgroup -g 1002 userapp && \
 
 WORKDIR /app
 
-RUN apk update && \
-    apk add --no-cache \
-        bluez-dev \
-        tk-dev \
-        util-linux-dev \
-        curl \
-        bash && \
-    pip install --no-cache-dir --upgrade "setuptools>=78.1.1"
+RUN pip install --no-cache-dir --upgrade "setuptools>=78.1.1"
 
 USER userapp
 
